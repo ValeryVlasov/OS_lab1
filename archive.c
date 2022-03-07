@@ -5,7 +5,7 @@ int pack_file(char *file_name, int arch_fd, int depth)
 	struct stat statbuf;
 	int size_file_name = sizeof(file_name);
 	int type = 1;
-	int size_file = statbuf.st_size;
+	long long size_file = statbuf.st_size;
 	int file_int;
 
 	if ((file_int = open(file_name, O_RDONLY)) == -1) {
@@ -26,7 +26,7 @@ int pack_file(char *file_name, int arch_fd, int depth)
 	}
 
 	char block[BUFF_SIZE];
-	int nread = read(file_int, block, 1);
+	ssize_t nread = read(file_int, block, 1);
 
 	while (nread > 0) {
 		write(arch_fd, block, nread);
@@ -130,107 +130,102 @@ int pack(t_params *params)
 	return 1;//Success
 }
 
-int unpack(t_params *params)
-{
-	int size;
-	int size_name;
-	int type;
-	int fnew;
-	int depth;
-	int depth_current = 0;
-	char* fname;
-	char* dir_current;
-	char block[SIZE_BUF];
-
-	int fa = open(arch_name, O_RDONLY);
+int unpack(t_params *params) {
+	int fa = open(params->archive_name, O_RDONLY);
 
 	if (fa == -1) {
-		printf("Ошибка: не удалось открыть файл %s\n", arch_name);
+		show_error("Error. Couldn't open file \"");
+		show_error(params->archive_name);
+		show_error("\"\n");
 		return 0;
 	}
 
-	printf("Файл успешно открыт: %s\n", arch_name);
-	lseek(fa, 0L, SEEK_CUR);
+	printf("File opened successfully: %s\n", params->archive_name);
+	lseek(fa, 0, SEEK_CUR);
 
-	DIR* directory = opendir(dir_name);
+	DIR* directory = opendir(params->dir_to_exec);
 
-	if(directory == NULL)
+	if (directory == NULL)
 	{
-		mkdir(dir_name, S_IRUSR|S_IWUSR|S_IXUSR|S_IRGRP|S_IWGRP|S_IXGRP|S_IROTH|S_IWOTH|S_IXOTH);
-		directory = opendir(dir_name);
-		if(directory == NULL) {
-			printf("Не удалось создать новую директорию с именем %s\n", dir_name);
+		mkdir(params->dir_to_exec, S_IRUSR|S_IWUSR|S_IXUSR|S_IRGRP|S_IWGRP|S_IXGRP|S_IROTH|S_IWOTH|S_IXOTH);
+		directory = opendir(params->dir_to_exec);
+		if (directory == NULL) {
+			show_error("Error. Couldn't create new directory with name \"");
+			show_error(params->dir_to_exec);
+			show_error("\"\n");
 			close(fa);
 			return 0;
 		}
 		else
-			printf("Запись будет осуществлена в новую директорию: %s\n", dir_name);
+			printf("Запись будет осуществлена в новую директорию: %s\n", params->dir_to_exec);
 	}
 
-	if (chdir(dir_name) < 0) {
-		printf("Ошибка: не удалось переместиться в директорию.\n");
+	if (chdir(params->dir_to_exec) < 0) {
+		show_error("Error. Couldn't move to directory \"");
+		show_error(params->dir_to_exec);
+		show_error("\"\n");
 		close(fa);
 		closedir(directory);
 		return 0;
 	}
 
-	printf("Директория успешно открыта: %s\n", dir_name);
+	printf("Directory has been opened successfully: %s\n", params->dir_to_exec);
 
-	while(read(fa, &size_name, sizeof(int)) > 0)
+	int size, size_name, type, fnew, depth, depth_current = 0;
+	char block[BUFF_SIZE];
+	char* dir_current, *fname;
+	while (read(fa, &size_name, sizeof(int)) > 0)
 	{
+		printf("size(size_name) = %d, size(int) = %lu\n", size_name, sizeof(int));
 		fname = malloc(size_name+1);
 
 		if (read(fa, fname, size_name) < 0) {
-			printf("Ошибка: не удалось считать имя файла\n");
+			show_error("Error. Couldn't read file name\n");
 			close(fa);
 			return 0;
 		}
 
 		if (read(fa, &type, sizeof(int)) < 0) {
-			printf("Ошибка: не удалось считать переменную проверки\n");
+			show_error("Error. Couldn't read checking variable");
 			close(fa);
 			return 0;
 		}
-
-		if(type == 0)
+		if (type == 0)
 		{
-			printf("Создаём директорию : %s\n", fname);
+			printf("Creating directory: %s\n", fname);
 
 			read(fa, &depth, sizeof(int));
 
-			if(depth_current < depth) {
+			if (depth_current < depth)
 				chdir(dir_current);
-			}
-
-			if(depth_current > depth) {
+			else if (depth_current > depth)
 				chdir("..");
-			}
 
 			depth_current = depth;
 			fnew = mkdir(fname, S_IRUSR|S_IWUSR|S_IXUSR|S_IRGRP|S_IWGRP|S_IXGRP|S_IROTH|S_IWOTH|S_IXOTH);
 
 			if(fnew == -1) {
-				printf("Не удалось создать новую директорию с именем %s\n", fname);
+				show_error("Error. Couldn't create new directory with name \"");
+				show_error(fname);
+				show_error("\"\n");
 				close(fa);
 				return 0;
 			}
-
 			else
 				dir_current = fname;
 		}
-		if(type == 1)
+		if (type == 1)
 		{
-			if(read(fa, &depth, sizeof(int)) > 0) {
-				printf("depth = %d\n", depth);
-			}
+			printf("Creating file: %s", fname);
+			if (read(fa, &depth, sizeof(int)) > 0)
+				printf(", depth = %d\n", depth);
+			else
+				printf("\n");
 
-			if(depth_current < depth) {
+			if (depth_current < depth)
 				chdir(dir_current);
-			}
-
-			if(depth_current > depth) {
+			else if (depth_current > depth)
 				chdir("..");
-			}
 
 			depth_current = depth;
 			read(fa, &size, sizeof(int));

@@ -14,15 +14,29 @@ int input_validation(t_params *params, char **args)
 		show_error("Error! Wrong function name.\n");
 		show_error("There are only \"pack\" and \"unpack\" functions\n");
 	}
-	if ((params->ptr_to_dir = opendir(args[2])) == NULL)
+	if (func == PACK)
 	{
-		is_error = 1;
-		show_error("Error! Can not open \"");
-		show_error(args[2]);
-		show_error("\" directory or it doesn't exist\n");
+		if ((params->ptr_to_dir = opendir(args[2])) == NULL)
+		{
+			is_error = 1;
+			show_error("Error! Can not open \"");
+			show_error(args[2]);
+			show_error("\" directory or it doesn't exist\n");
+		}
+		else
+			closedir(params->ptr_to_dir);
 	}
-	else
-		closedir(params->ptr_to_dir);
+	else if (func == UNPACK)
+	{
+		if ((params->ptr_to_dir = opendir(args[2])) != NULL)
+		{
+			is_error = 1;
+			closedir(params->ptr_to_dir);
+			show_error("Error! Can not open \"");
+			show_error(args[2]);
+			show_error("\" directory or it doesn't exist\n");
+		}
+	}
 	if (func == PACK && access(args[3], F_OK) != -1)//Если файл существует, то
 	{
 		is_error = 1;
