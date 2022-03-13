@@ -2,7 +2,7 @@ NAME	=	archiver
 
 SRC		=	main.c archive.c utils.c
 
-OBJ		=	$(SRC:.c=.o)
+OBJ		=	$(patsubst %.c, %.o, $(SRC))
 
 HDRS	=	archive.h
 
@@ -10,15 +10,17 @@ CC		=	gcc
 
 CFLAGS	=	-Wall -Wextra -Werror #-fsanitize=address
 
+OPTFLAGS	=	-O2
+
 .PHONY:	all clean fclean re
 
 all:	$(NAME)
 
-$(NAME):	$(OBJ) Makefile
+$(NAME):	$(OBJ)
 			$(CC) $(CFLAGS) $(OBJ) -o $(NAME)
 
-%.o:	%.c $(HRDS)
-			$(CC) $(CFLAGS) -c $< -o ${<:.c=.o}
+%.o:	%.c $(HRDS) Makefile
+		$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
 			rm -f *.o
@@ -26,4 +28,4 @@ clean:
 fclean:	clean
 			rm -f $(NAME)
 
-re:		clean fclean all
+re:		fclean all
