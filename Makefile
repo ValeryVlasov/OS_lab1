@@ -8,7 +8,7 @@ HDRS	=	archive.h
 
 CC		=	gcc
 
-CFLAGS	=	#-Wall -Wextra -Werror #-fsanitize=address
+CFLAGS	=	-Wall -Wextra -Werror #-fsanitize=address
 
 .PHONY:	all clean fclean re
 
